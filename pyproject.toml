@@ -1,0 +1,10 @@
+[project]
+name = "lurraldebus-cli"
+version = "1.0.0"
+requires-python = ">=3.8"
+dependencies = [
+    "requests>=2.28.0",
+]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]

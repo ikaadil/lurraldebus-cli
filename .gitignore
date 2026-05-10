@@ -13,3 +13,5 @@ htmlcov/
 .env.production.local
 
 tests/__pycache__/
+src/lurraldebus_cli/__pycache__/
+src/lurraldebus_cli.egg-info/

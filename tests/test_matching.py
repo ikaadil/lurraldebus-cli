@@ -10,6 +10,7 @@ from lurraldebus_cli.formatting import (
     format_arrivals_json,
     format_municipalities_table,
     format_stops_table,
+    normalize_occupation,
 )
 
 
@@ -111,6 +112,7 @@ class TestParseArrivals(unittest.TestCase):
         self.assertEqual(arrivals[0]["direction"], "Donostia/San Sebastian")
         self.assertEqual(arrivals[0]["time"], "00 min")
         self.assertEqual(arrivals[0]["occupancy"], "16")
+        self.assertEqual(arrivals[0]["occupation_text"], "ocupacion16")
 
     def test_second_arrival(self):
         arrivals = parse_arrivals(SAMPLE_HTML_TABLE)
@@ -118,11 +120,13 @@ class TestParseArrivals(unittest.TestCase):
         self.assertEqual(arrivals[1]["direction"], "Hondarri(N-1)")
         self.assertEqual(arrivals[1]["time"], "10 min")
         self.assertEqual(arrivals[1]["occupancy"], "-")
+        self.assertEqual(arrivals[1]["occupation_text"], "ocupacion-")
 
     def test_third_arrival(self):
         arrivals = parse_arrivals(SAMPLE_HTML_TABLE)
         self.assertEqual(arrivals[2]["line_number"], "E01")
         self.assertEqual(arrivals[2]["occupancy"], "38")
+        self.assertEqual(arrivals[2]["occupation_text"], "ocupacion38")
 
     def test_empty_html(self):
         arrivals = parse_arrivals("<html></html>")
@@ -133,25 +137,57 @@ class TestParseArrivals(unittest.TestCase):
         self.assertEqual(arrivals, [])
 
 
+class TestNormalizeOccupation(unittest.TestCase):
+    def test_number(self):
+        self.assertEqual(normalize_occupation("ocupacion8"), "8")
+
+    def test_number_with_space(self):
+        self.assertEqual(normalize_occupation("ocupacion 8"), "8")
+
+    def test_dash(self):
+        self.assertEqual(normalize_occupation("ocupacion-"), "-")
+
+    def test_dash_with_space(self):
+        self.assertEqual(normalize_occupation("ocupacion -"), "-")
+
+    def test_bare_number(self):
+        self.assertEqual(normalize_occupation("8"), "8")
+
+    def test_bare_dash(self):
+        self.assertEqual(normalize_occupation("-"), "-")
+
+    def test_empty(self):
+        self.assertEqual(normalize_occupation(""), "-")
+
+    def test_none(self):
+        self.assertEqual(normalize_occupation(None), "-")
+
+
 class TestFormatting(unittest.TestCase):
     def test_arrivals_table_no_results(self):
         result = format_arrivals_table([])
         self.assertIn("No live arrivals found", result)
 
     def test_arrivals_table_with_data(self):
-        arrivals = [{"line_number": "E21", "direction": "Test", "time": "05 min", "occupancy": "10"}]
+        arrivals = [{"line_number": "E21", "line_name": "Route A>B", "direction": "Test", "time": "05 min", "occupancy": "10", "occupation_text": "ocupacion10"}]
         result = format_arrivals_table(arrivals)
         self.assertIn("E21", result)
+        self.assertIn("Route A>B", result)
         self.assertIn("Test", result)
+        self.assertIn("10", result)
+        self.assertNotIn("ocupacion10", result)
+        self.assertIn("05 min", result)
 
     def test_arrivals_json(self):
-        arrivals = [{"line_number": "E21", "line_name": "Route", "direction": "Dest", "time": "05 min", "occupancy": "10"}]
+        arrivals = [{"line_number": "E21", "line_name": "Route", "direction": "Dest", "time": "05 min", "occupancy": "10", "occupation_text": "ocupacion10"}]
         import json
         result = format_arrivals_json(arrivals, "Test Stop", "109", "20069")
         parsed = json.loads(result)
         self.assertEqual(parsed["stop_name"], "Test Stop")
         self.assertEqual(len(parsed["arrivals"]), 1)
         self.assertEqual(parsed["arrivals"][0]["line"], "E21")
+        self.assertEqual(parsed["arrivals"][0]["route"], "Route")
+        self.assertEqual(parsed["arrivals"][0]["occupation_text"], "ocupacion10")
 
     def test_municipalities_table(self):
         m = {"20069": "Donostia / San Sebastian", "20045": "Irun"}

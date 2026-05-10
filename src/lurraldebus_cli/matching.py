@@ -19,10 +19,12 @@ def parse_arrivals(html):
         direction = _extract_direction(row)
         time = _extract(row, r'class="live-line-time"[^>]*>\s*<p>\s*<span>\s*([^<]+)')
         if line_number or time:
+            occ_raw = occupancy.strip() if occupancy else "-"
             arrivals.append({
                 "line_number": line_number.strip() if line_number else "?",
                 "line_name": line_name.strip() if line_name else "",
-                "occupancy": occupancy.strip() if occupancy else "-",
+                "occupancy": occ_raw,
+                "occupation_text": f"ocupacion{occ_raw}",
                 "direction": direction.strip() if direction else "?",
                 "time": time.strip() if time else "?",
             })

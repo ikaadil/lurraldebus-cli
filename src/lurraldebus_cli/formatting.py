@@ -1,29 +1,43 @@
 import json
+import re
+
+
+def normalize_occupation(value):
+    if not value or value in ("-", "ocupacion-", "ocupacion -"):
+        return "-"
+    m = re.search(r"ocupacion\s*(.+)", value, re.IGNORECASE)
+    if m:
+        inner = m.group(1).strip()
+        return inner if inner and inner != "-" else "-"
+    return value.strip() if value.strip() and value.strip() != "-" else "-"
 
 
 def format_arrivals_table(arrivals, stop_name=""):
     if not arrivals:
         return "No live arrivals found" + (f" for {stop_name}" if stop_name else "")
 
-    header = f"{'Line':<8} {'Destination':<35} {'Minutes':<10} {'Occupancy':<10}"
+    header = f"{'Line':<6} {'Route':<52} {'Occupation':<14} {'Direction':<26} {'Min':<8}"
     separator = "-" * len(header)
     lines = [separator, header, separator]
 
     for a in arrivals:
         line = a.get("line_number", "?")
+        route = a.get("line_name", "") or "-"
         direction = a.get("direction", "?")
         time = a.get("time", "?")
-        occupancy = a.get("occupancy", "-")
+        occupation_text = a.get("occupation_text", "ocupacion -")
+        occupation_display = normalize_occupation(occupation_text)
 
         minutes = time
-        if "min" in minutes.lower():
-            minutes = minutes.lower().replace("min", "").strip()
-        if minutes == "":
-            minutes = "0"
+        if "min" not in minutes.lower():
+            minutes = minutes + " min" if minutes and minutes != "?" else "-"
+        if minutes == "0 min":
+            minutes = "0 min"
 
-        direction = direction[:33] + ".." if len(direction) > 35 else direction
+        route = route[:50] + ".." if len(route) > 52 else route
+        direction = direction[:24] + ".." if len(direction) > 26 else direction
 
-        lines.append(f"{line:<8} {direction:<35} {minutes:<10} {occupancy:<10}")
+        lines.append(f"{line:<6} {route:<52} {occupation_display:<14} {direction:<26} {minutes:<8}")
 
     lines.append(separator)
     return "\n".join(lines)
@@ -49,6 +63,7 @@ def format_arrivals_json(arrivals, stop_name="", stop_id="", municipio_id=""):
             "direction": a.get("direction", ""),
             "minutes": minutes,
             "occupancy": a.get("occupancy", "-"),
+            "occupation_text": a.get("occupation_text", "ocupacion -"),
         })
     return json.dumps(output, indent=2, ensure_ascii=False)
 
